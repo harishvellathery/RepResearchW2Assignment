@@ -1,0 +1,99 @@
+---
+title: "PA1_template"
+author: "Harish"
+date: "May 6, 2019"
+output: html_document
+---
+
+#Read data
+
+```{r}
+if (!file.exists("activity.csv") )
+    {
+     dlurl <- 'http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip'  
+     download.file(dlurl,destfile='repdata%2Fdata%2Factivity.zip',mode='wb')  
+     unzip('repdata%2Fdata%2Factivity.zip')
+    }
+
+# Read data
+data <- read.csv("activity.csv")  
+```
+
+#Graph of Mean Total Number of Steps Taken Per Day
+
+```{r}
+steps_by_day <- aggregate(steps ~ date, data, sum)
+hist(steps_by_day$steps, main = paste("Total Steps Each Day"), col="green",xlab="Number of Steps")
+
+```
+
+#Mean and Median
+
+```{r}
+rmean <- mean(steps_by_day$steps)
+print(paste("Mean is: ",rmean))
+
+rmedian <- median(steps_by_day$steps)
+print(paste("Median is: ",rmedian))
+
+```
+
+#Average Daily Activity Pattern
+
+##Calculate average steps for each interval for all days
+##Plot the Average Number Steps per Day by Interval
+##Find interval with most average steps
+
+```{r}
+steps_by_interval <- aggregate(steps ~ interval, data, mean)
+plot(steps_by_interval$interval,steps_by_interval$steps, type="l", xlab="Interval", ylab="Number of Steps",main="Average Number of Steps per Day by Interval")
+
+max_interval <- steps_by_interval[which.max(steps_by_interval$steps),1]
+print(paste("Max interval is: ",max_interval))
+
+```
+
+#Impute Mean Values in cases where NA
+
+```{r}
+StepsAverage <- aggregate(steps ~ interval, data = data, FUN = mean)
+fillNA <- numeric()
+for (i in 1:nrow(data)) {
+    obs <- data[i, ]
+    if (is.na(obs$steps)) {
+        steps <- subset(StepsAverage, interval == obs$interval)$steps
+    } else {
+        steps <- obs$steps
+    }
+    fillNA <- c(fillNA, steps)
+}
+
+new_activity <- data
+new_activity$steps <- fillNA
+
+```
+
+#Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day.
+
+```{r}
+StepsTotalUnion <- aggregate(steps ~ date, data = new_activity, sum, na.rm = TRUE)
+hist(StepsTotalUnion$steps, main = paste("Total Steps Each Day"), col="blue", xlab="Number of Steps")
+hist(steps_by_day$steps, main = paste("Total Steps Each Day"), col="green", xlab="Number of Steps", add=T)
+legend("topright", c("Imputed", "Non-imputed"), col=c("blue", "green"), lwd=10)
+
+```
+
+#Differences in activity patterns between Weekdays and Weekends
+
+
+```{r}
+weekdays <- c("Monday", "Tuesday", "Wednesday", "Thursday", 
+              "Friday")
+new_activity$dow = as.factor(ifelse(is.element(weekdays(as.Date(new_activity$date)),weekdays), "Weekday", "Weekend"))
+StepsTotalUnion <- aggregate(steps ~ interval + dow, new_activity, mean)
+library(lattice)
+xyplot(StepsTotalUnion$steps ~ StepsTotalUnion$interval|StepsTotalUnion$dow, main="Average Steps per Day by Interval",xlab="Interval", ylab="Steps",layout=c(1,2), type="l")
+
+```
+
+
